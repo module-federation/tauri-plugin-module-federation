@@ -46,6 +46,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             "module-federation",
             move |app, request, responder| {
                 let cache_dir = app
+                    .app_handle()
                     .path()
                     .app_cache_dir()
                     .expect("No cache dir!")
@@ -53,7 +54,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 
                 std::fs::create_dir_all(&cache_dir).unwrap();
 
-                let app = app.clone();
+                let app = app.app_handle().clone();
                 app.manage(Schemes::default());
 
                 tauri::async_runtime::spawn(async move {
