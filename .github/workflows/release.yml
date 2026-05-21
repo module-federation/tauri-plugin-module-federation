@@ -1,0 +1,239 @@
+name: Release
+
+on:
+  release:
+    types: [released, prereleased]
+  workflow_dispatch:
+    inputs:
+      version:
+        type: choice
+        description: Release Version
+        required: true
+        default: next
+        options:
+          - latest
+          - next
+      branch:
+        description: Release Branch (confirm release branch)
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.workflow }}-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: Publish
+    env:
+      PACKAGE_DIR: module-federation-plugin
+      PACKAGE_NAME: '@module-federation/tauri'
+      CARGO_MANIFEST: tauri-plugin/Cargo.toml
+      CARGO_PACKAGE: tauri-plugin-module-federation
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 25
+          ref: ${{ github.event.release.tag_name || github.event.inputs.branch }}
+
+      - name: Cache tool downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          key: ${{ runner.os }}-toolcache-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-toolcache-
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate preview version
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version == 'next'
+        run: |
+          SAFE_BRANCH=$(echo "${{ github.event.inputs.branch }}" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          npx changeset version --snapshot "$SAFE_BRANCH"
+
+      - name: Verify tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ "${TAG#v}" != "$TAG" ]; then
+            echo "Invalid tag format; refusing to publish."
+            echo "Expected: 1.2.3 (no leading 'v')"
+            echo "Got: $TAG"
+            exit 1
+          fi
+
+          VERSION_FROM_TAG="$TAG"
+          PKG_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+
+          if [ "$PKG_VERSION" != "$VERSION_FROM_TAG" ]; then
+            echo "Version mismatch; refusing to publish."
+            echo "Git tag: $TAG"
+            echo "module-federation-plugin/package.json version: $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Patch prerelease version with next tag
+        if: github.event_name == 'release' && github.event.action == 'prereleased'
+        shell: bash
+        run: |
+          CURRENT_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          BASE_VERSION="${CURRENT_VERSION%%-*}"
+          CURRENT_NEXT="$(npm view "$PACKAGE_NAME" "dist-tags.next" --json 2>/dev/null || true)"
+          CURRENT_NEXT="${CURRENT_NEXT#\"}"
+          CURRENT_NEXT="${CURRENT_NEXT%\"}"
+          if [ "$CURRENT_NEXT" = "null" ]; then
+            CURRENT_NEXT=""
+          fi
+
+          PREFIX_REGEX="^${BASE_VERSION//./\\.}-next\\.([0-9]+)$"
+          if [[ "$CURRENT_NEXT" =~ $PREFIX_REGEX ]]; then
+            NEXT_NUMBER=$((BASH_REMATCH[1] + 1))
+          else
+            NEXT_NUMBER=1
+          fi
+
+          NEXT_VERSION="${BASE_VERSION}-next.${NEXT_NUMBER}"
+          node --eval '
+            const fs = require("node:fs");
+            const path = "./module-federation-plugin/package.json";
+            const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+            pkg.version = process.argv[1];
+            fs.writeFileSync(path, JSON.stringify(pkg, null, "\t") + "\n");
+          ' "$NEXT_VERSION"
+          echo "Set prerelease version: $NEXT_VERSION"
+
+      - name: Sync Cargo release version
+        run: pnpm release:sync
+
+      - name: Verify release artifacts
+        run: pnpm build
+
+      - name: Compute npm dist-tag
+        id: dist
+        shell: bash
+        run: |
+          DIST_TAG="latest"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ github.event.inputs.version }}" = "next" ]; then
+              DIST_TAG="next"
+            fi
+          else
+            if [ "${{ github.event.action }}" = "prereleased" ]; then
+              DIST_TAG="next"
+            fi
+          fi
+
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve npm publish action
+        id: npm_publish_action
+        shell: bash
+        run: |
+          PKG_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          DIST_TAG="${{ steps.dist.outputs.dist_tag }}"
+          ACTION="publish"
+          REASON="new version not yet on npm"
+
+          EXISTING_VERSION="$(npm view "$PACKAGE_NAME@$PKG_VERSION" version --json 2>/dev/null || true)"
+          EXISTING_VERSION="${EXISTING_VERSION#\"}"
+          EXISTING_VERSION="${EXISTING_VERSION%\"}"
+
+          if [ "$EXISTING_VERSION" = "$PKG_VERSION" ]; then
+            CURRENT_TAG_VERSION="$(npm view "$PACKAGE_NAME" "dist-tags.$DIST_TAG" --json 2>/dev/null || true)"
+            CURRENT_TAG_VERSION="${CURRENT_TAG_VERSION#\"}"
+            CURRENT_TAG_VERSION="${CURRENT_TAG_VERSION%\"}"
+            if [ "$CURRENT_TAG_VERSION" = "null" ]; then
+              CURRENT_TAG_VERSION=""
+            fi
+
+            if [ "$CURRENT_TAG_VERSION" = "$PKG_VERSION" ]; then
+              ACTION="skip"
+              REASON="version already published and dist-tag already points to it"
+            else
+              echo "Refusing to republish existing npm version:"
+              echo "Package: $PACKAGE_NAME"
+              echo "Version: $PKG_VERSION"
+              echo "Target dist-tag: $DIST_TAG"
+              echo "Current '$DIST_TAG' dist-tag points to: ${CURRENT_TAG_VERSION:-<unset>}"
+              exit 1
+            fi
+          fi
+
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Cargo publish action
+        id: cargo_publish_action
+        shell: bash
+        run: |
+          CARGO_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          STATUS_CODE="$(curl -s -o /tmp/crate.json -w '%{http_code}' "https://crates.io/api/v1/crates/$CARGO_PACKAGE/$CARGO_VERSION")"
+          ACTION="publish"
+          REASON="new version not yet on crates.io"
+
+          if [ "$STATUS_CODE" = "200" ]; then
+            ACTION="skip"
+            REASON="version already published on crates.io"
+          elif [ "$STATUS_CODE" != "404" ]; then
+            echo "Unexpected crates.io response: $STATUS_CODE"
+            cat /tmp/crate.json
+            exit 1
+          fi
+
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        if: steps.npm_publish_action.outputs.action == 'publish'
+        working-directory: module-federation-plugin
+        run: npm publish --provenance --tag "${{ steps.dist.outputs.dist_tag }}" --access public
+
+      - name: Publish to crates.io
+        if: steps.cargo_publish_action.outputs.action == 'publish'
+        run: cargo publish --manifest-path "$CARGO_MANIFEST" --allow-dirty --no-verify --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
+
+      - name: Post summary
+        if: always()
+        continue-on-error: true
+        run: |
+          VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          SOURCE_REF="${{ github.event.release.tag_name || github.event.inputs.branch }}"
+          {
+            echo "## Release publish"
+            echo
+            echo "npm package: \`$PACKAGE_NAME\`"
+            echo "cargo crate: \`$CARGO_PACKAGE\`"
+            echo "version: \`$VERSION\`"
+            echo "dist-tag: \`${{ steps.dist.outputs.dist_tag }}\`"
+            echo "npm action: \`${{ steps.npm_publish_action.outputs.action || 'unknown' }}\`"
+            echo "npm reason: \`${{ steps.npm_publish_action.outputs.reason || 'n/a' }}\`"
+            echo "cargo action: \`${{ steps.cargo_publish_action.outputs.action || 'unknown' }}\`"
+            echo "cargo reason: \`${{ steps.cargo_publish_action.outputs.reason || 'n/a' }}\`"
+            echo "trigger: \`${{ github.event_name }}\`"
+            echo "source ref: \`$SOURCE_REF\`"
+          } > "$GITHUB_STEP_SUMMARY"

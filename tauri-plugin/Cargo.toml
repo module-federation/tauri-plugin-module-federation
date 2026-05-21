@@ -2,7 +2,10 @@
 name = "tauri-plugin-module-federation"
 version = "0.0.0"
 authors = ["You"]
-description = ""
+license = "MIT"
+description = "Tauri plugin for Module Federation remote loading and offline cache fallback."
+homepage = "https://github.com/module-federation/tauri-plugin-module-federation"
+repository = "https://github.com/module-federation/tauri-plugin-module-federation"
 edition = "2021"
 rust-version = "1.70"
 exclude = ["/examples", "/webview-dist", "/webview-src", "/node_modules"]

@@ -1,10 +1,48 @@
 {
-	"name": "@crabnebula-dev/tauri-module-federation",
-	"main": "index.js",
+	"name": "@module-federation/tauri",
+	"version": "0.0.0",
+	"type": "module",
+	"description": "Tauri runtime integration for Module Federation.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/module-federation/tauri-plugin-module-federation.git",
+		"directory": "module-federation-plugin"
+	},
+	"bugs": {
+		"url": "https://github.com/module-federation/tauri-plugin-module-federation/issues"
+	},
+	"homepage": "https://github.com/module-federation/tauri-plugin-module-federation#readme",
+	"keywords": [
+		"tauri",
+		"module federation",
+		"microfrontend"
+	],
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist/**/*",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "rslib build"
+	},
 	"peerDependencies": {
 		"@module-federation/runtime": "^2.0.0"
 	},
 	"devDependencies": {
+		"@rslib/core": "^0.12.4",
 		"@module-federation/runtime": "^2.3.1"
 	}
 }

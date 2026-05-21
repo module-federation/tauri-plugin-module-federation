@@ -1,36 +1,71 @@
-# tauri-plugin-module-federation
+# Tauri Module Federation
 
-A [Tauri](https://tauri.app/) plugin and [Module Federation Runtime](https://module-federation.io/guide/basic/runtime.html) plugin that caches remote modules for offline use.
+Use Module Federation in Tauri apps with `@module-federation/tauri` and the companion Rust plugin `tauri-plugin-module-federation`.
 
-The Federation Runtime plugin rewrites remote module requests to use the `module-federation://` URI scheme, which is then handled by the Tauri plugin. Files loaded over this URI scheme are cached for serving when fetching from the network fails.
+> [!IMPORTANT]
+> `@module-federation/tauri` rewrites remote entries to the `module-federation://` protocol. Your Tauri app must register `tauri-plugin-module-federation` so those requests can be fetched, cached, and replayed offline.
 
-## How it works
+## What you get
 
-1. The host app registers the runtime plugin via `runtimePlugins` in its Module Federation config
-2. The plugin intercepts remote module resolution (`afterResolve`) and rewrites entry URLs to `module-federation://<host>/?fullUrl=<original_url>`
-3. The Tauri plugin handles the custom URI scheme, fetching from the network and caching the response
-4. On subsequent loads, if the network is unavailable, the cached version is served instead
+- A Module Federation runtime plugin for Tauri hosts.
+- A Tauri custom protocol handler that fetches and caches remote assets.
+- Offline fallback when a remote module has already been fetched once.
 
-## Project structure
+## Package usage
 
-| Directory | Description |
-|---|---|
-| `tauri-plugin/` | Rust Tauri plugin — handles the `module-federation://` custom protocol and caching |
-| `module-federation-plugin/` | JavaScript runtime plugin (`@crabnebula-dev/tauri-module-federation`) — rewrites remote URLs |
-| `example/` | Example apps demonstrating the setup |
+```ts
+import { pluginModuleFederation } from '@module-federation/rsbuild-plugin';
 
-## Prerequisites
-
-- [Rust](https://www.rust-lang.org/tools/install)
-- [Node.js](https://nodejs.org/) (v18+)
-- [pnpm](https://pnpm.io/installation)
-- [Tauri prerequisites](https://tauri.app/start/prerequisites/)
-
-## Getting started
-
-```sh
-pnpm install
-cd example && pnpm dev
+export default {
+	plugins: [
+		pluginModuleFederation({
+			name: 'host',
+			remotes: {
+				remote: 'remote@http://localhost:3002/remoteEntry.js',
+			},
+			runtimePlugins: ['@module-federation/tauri'],
+		}),
+	],
+};
 ```
 
-See [`example/README.md`](example/README.md) for more details.
+```rust
+tauri::Builder::default()
+    .plugin(tauri_plugin_module_federation::init())
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
+```
+
+## Example apps
+
+- Host app: `example/host` on `http://localhost:3001`
+- Guest app: `example/guest` on `http://localhost:3002`
+- Guest app 2: `example/guest-2` on `http://localhost:3003`
+- Start all apps from repo root with `pnpm --dir example dev`
+- More example details: `example/README.md`
+
+## Behavior
+
+- Remote entry URLs are rewritten from `http(s)://...` to `module-federation://.../?fullUrl=...`.
+- The Tauri plugin fetches those assets over the network and stores them in the app cache dir.
+- Cache keys are derived from the remote host and request path.
+- If a later fetch fails, the cached asset is served instead.
+
+## Build checks
+
+```bash
+pnpm install
+pnpm --filter example_guest build
+pnpm --filter 'example-guest_2' build
+pnpm --filter example-host exec rsbuild build
+```
+
+## Repo layout
+
+- Rust plugin: `tauri-plugin`
+- Runtime package: `module-federation-plugin`
+- Example apps: `example`
+
+## License
+
+MIT

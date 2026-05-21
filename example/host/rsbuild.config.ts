@@ -16,7 +16,7 @@ export default defineConfig({
 					example_guest:
 						'example_guest@http://localhost:3002/remoteEntry.js',
 				},
-				runtimePlugins: ['@crabnebula-dev/tauri-module-federation'],
+				runtimePlugins: ['@module-federation/tauri'],
 				shared: {
 					react: { eager: true },
 					'react-dom': { eager: true },
