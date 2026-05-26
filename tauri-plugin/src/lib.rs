@@ -40,17 +40,18 @@ impl<R: Runtime, T: Manager<R>> crate::TauriPluginModuleFederationExt<R> for T {
 struct Schemes(pub Mutex<HashMap<(String, Option<u16>), String>>);
 
 /// Initializes the plugin.
-pub fn init<R: Runtime>() -> TauriPlugin<R> {
+pub fn init<R: Runtime>(arg: Option<&'static str>) -> TauriPlugin<R> {
     let builder = Builder::new("tauri-plugin-module-federation")
         .register_asynchronous_uri_scheme_protocol(
             "module-federation",
             move |app, request, responder| {
+                let subfolder = arg.unwrap_or("module-federation");
                 let cache_dir = app
                     .app_handle()
                     .path()
                     .app_cache_dir()
                     .expect("No cache dir!")
-                    .join("module-federation");
+                    .join(subfolder);
 
                 std::fs::create_dir_all(&cache_dir).unwrap();
 
