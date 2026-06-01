@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":configMigration",
+    ":maintainLockFilesWeekly"
+  ],
+  "ignorePresets": [":ignoreModulesAndTests"],
+  "enabledManagers": ["cargo", "github-actions", "npm"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "packageRules": [
+    {
+      "description": "Keep example workspace app updates together.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["example/package.json", "example/**/package.json"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "example app dependencies"
+    },
+    {
+      "description": "Keep Rust dependency updates together.",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "rust dependencies"
+    }
+  ]
+}

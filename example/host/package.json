@@ -16,9 +16,9 @@
 		"zephyr-rsbuild-plugin": "^1.0.1"
 	},
 	"devDependencies": {
-		"@module-federation/rsbuild-plugin": "^0.16.0",
-		"@rsbuild/core": "^1.7.5",
-		"@rsbuild/plugin-react": "^1.3.1",
+		"@module-federation/rsbuild-plugin": "^2.5.0",
+		"@rsbuild/core": "^2.0.0",
+		"@rsbuild/plugin-react": "^2.0.0",
 		"@tauri-apps/cli": "^2.10.1",
 		"https-proxy-agent": "^7.0.6",
 		"serve": "^14.2.6",
