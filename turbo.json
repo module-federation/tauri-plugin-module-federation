@@ -1,0 +1,21 @@
+{
+	"$schema": "https://turborepo.com/schema.json",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"example-host#dev": {
+			"cache": false,
+			"persistent": true,
+			"with": ["example_guest#dev", "example-guest_2#dev"]
+		},
+		"clean": {
+			"cache": false
+		}
+	}
+}

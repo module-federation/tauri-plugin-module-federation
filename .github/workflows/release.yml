@@ -31,9 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: Publish
     env:
-      PACKAGE_DIR: module-federation-plugin
+      PACKAGE_DIR: packages/tauri
       PACKAGE_NAME: '@module-federation/tauri'
-      CARGO_MANIFEST: tauri-plugin/Cargo.toml
+      CARGO_MANIFEST: packages/tauri-plugin/Cargo.toml
       CARGO_PACKAGE: tauri-plugin-module-federation
     steps:
       - name: Checkout source
@@ -88,12 +88,12 @@ jobs:
           fi
 
           VERSION_FROM_TAG="$TAG"
-          PKG_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          PKG_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
 
           if [ "$PKG_VERSION" != "$VERSION_FROM_TAG" ]; then
             echo "Version mismatch; refusing to publish."
             echo "Git tag: $TAG"
-            echo "module-federation-plugin/package.json version: $PKG_VERSION"
+            echo "packages/tauri/package.json version: $PKG_VERSION"
             exit 1
           fi
 
@@ -101,7 +101,7 @@ jobs:
         if: github.event_name == 'release' && github.event.action == 'prereleased'
         shell: bash
         run: |
-          CURRENT_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          CURRENT_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
           BASE_VERSION="${CURRENT_VERSION%%-*}"
           CURRENT_NEXT="$(npm view "$PACKAGE_NAME" "dist-tags.next" --json 2>/dev/null || true)"
           CURRENT_NEXT="${CURRENT_NEXT#\"}"
@@ -120,7 +120,7 @@ jobs:
           NEXT_VERSION="${BASE_VERSION}-next.${NEXT_NUMBER}"
           node --eval '
             const fs = require("node:fs");
-            const path = "./module-federation-plugin/package.json";
+            const path = "./packages/tauri/package.json";
             const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
             pkg.version = process.argv[1];
             fs.writeFileSync(path, JSON.stringify(pkg, null, "\t") + "\n");
@@ -154,7 +154,7 @@ jobs:
         id: npm_publish_action
         shell: bash
         run: |
-          PKG_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          PKG_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
           DIST_TAG="${{ steps.dist.outputs.dist_tag }}"
           ACTION="publish"
           REASON="new version not yet on npm"
@@ -191,7 +191,7 @@ jobs:
         id: cargo_publish_action
         shell: bash
         run: |
-          CARGO_VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          CARGO_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
           STATUS_CODE="$(curl -s -o /tmp/crate.json -w '%{http_code}' "https://crates.io/api/v1/crates/$CARGO_PACKAGE/$CARGO_VERSION")"
           ACTION="publish"
           REASON="new version not yet on crates.io"
@@ -210,7 +210,7 @@ jobs:
 
       - name: Publish to npm
         if: steps.npm_publish_action.outputs.action == 'publish'
-        working-directory: module-federation-plugin
+        working-directory: packages/tauri
         run: npm publish --provenance --tag "${{ steps.dist.outputs.dist_tag }}" --access public
 
       - name: Publish to crates.io
@@ -221,7 +221,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          VERSION="$(node -p "require('./module-federation-plugin/package.json').version")"
+          VERSION="$(node -p "require('./packages/tauri/package.json').version")"
           SOURCE_REF="${{ github.event.release.tag_name || github.event.inputs.branch }}"
           {
             echo "## Release publish"

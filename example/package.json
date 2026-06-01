@@ -1,13 +1,12 @@
 {
 	"name": "example",
 	"scripts": {
-		"dev": "concurrently -k \"pnpm run dev:guests & wait-on http-get://localhost:3002 http-get://localhost:3003\" \"pnpm run dev:host\"",
-		"dev:guests": "pnpm --filter example_guest --filter example-guest_2 --parallel dev",
-		"dev:host": "pnpm --filter example-host dev",
-		"build": "pnpm --filter 'example*' --parallel build"
+		"dev": "turbo run dev --filter=example-host",
+		"dev:guests": "turbo run dev --filter=example_guest --filter=example-guest_2",
+		"dev:host": "turbo run dev --filter=example-host",
+		"build": "turbo run build --filter=example-host --filter=example_guest --filter=example-guest_2"
 	},
 	"devDependencies": {
-		"concurrently": "^10.0.0",
-		"wait-on": "^9.0.4"
+		"turbo": "^2.9.16"
 	}
 }

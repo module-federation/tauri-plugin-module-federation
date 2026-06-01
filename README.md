@@ -41,7 +41,7 @@ tauri::Builder::default()
 - Host app: `example/host` on `http://localhost:3001`
 - Guest app: `example/guest` on `http://localhost:3002`
 - Guest app 2: `example/guest-2` on `http://localhost:3003`
-- Start all apps from repo root with `pnpm --dir example dev`
+- Start all apps from repo root with `pnpm dev`
 - More example details: `example/README.md`
 
 ## Behavior
@@ -55,16 +55,14 @@ tauri::Builder::default()
 
 ```bash
 pnpm install
-pnpm --filter example_guest build
-pnpm --filter 'example-guest_2' build
-pnpm --filter example-host exec rsbuild build
+pnpm build
 ```
 
 ## Repo layout
 
-- Rust plugin: `tauri-plugin`
-- Runtime package: `module-federation-plugin`
-- Example apps: `example`
+- Rust plugin: `packages/tauri-plugin`
+- Runtime package: `packages/tauri`
+- Example apps: `example/*`
 
 ## License
 

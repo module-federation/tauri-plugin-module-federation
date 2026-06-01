@@ -1,7 +1,7 @@
 packages:
   - example
   - example/*
-  - module-federation-plugin
+  - packages/*
 allowBuilds:
   core-js: true
 

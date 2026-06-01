@@ -3,15 +3,17 @@
 	"private": true,
 	"packageManager": "pnpm@10.28.2",
 	"scripts": {
-		"build": "pnpm --dir module-federation-plugin build && pnpm build:package:cargo",
+		"dev": "turbo run dev --filter=example-host",
+		"build": "turbo run build --filter='./packages/*' --filter='./example/*' && pnpm build:package:cargo",
 		"build:package": "pnpm build",
-		"build:package:cargo": "cargo package --manifest-path tauri-plugin/Cargo.toml --allow-dirty --no-verify",
+		"build:package:cargo": "cargo package --manifest-path packages/tauri-plugin/Cargo.toml --allow-dirty --no-verify",
 		"changeset": "changeset",
 		"changeset:status": "changeset status",
 		"release:sync": "node scripts/sync-release-version.mjs",
 		"release:sync:check": "node scripts/sync-release-version.mjs --check"
 	},
 	"devDependencies": {
-		"@changesets/cli": "^2.29.7"
+		"@changesets/cli": "^2.29.7",
+		"turbo": "^2.9.16"
 	}
 }

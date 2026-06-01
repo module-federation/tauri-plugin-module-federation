@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "tauri dev",
+		"dev": "wait-on http-get://localhost:3002 http-get://localhost:3003 && tauri dev",
 		"build": "tauri build",
 		"serve": "serve dist -p 3001",
 		"clean": "rm -rf dist"
@@ -23,6 +23,7 @@
 		"https-proxy-agent": "^7.0.6",
 		"serve": "^14.2.6",
 		"typescript": "^5.8.3",
+		"wait-on": "^9.0.4",
 		"webpack": "^5.106.0"
 	}
 }

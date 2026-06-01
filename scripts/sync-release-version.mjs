@@ -1,15 +1,15 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const checkOnly = process.argv.includes('--check');
-const packageJsonPath = new URL('../module-federation-plugin/package.json', import.meta.url);
-const cargoTomlPath = new URL('../tauri-plugin/Cargo.toml', import.meta.url);
+const packageJsonPath = new URL('../packages/tauri/package.json', import.meta.url);
+const cargoTomlPath = new URL('../packages/tauri-plugin/Cargo.toml', import.meta.url);
 const cargoLockPath = new URL('../Cargo.lock', import.meta.url);
 
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 const version = packageJson.version;
 
 if (!version) {
-	throw new Error('module-federation-plugin/package.json is missing a version');
+	throw new Error('packages/tauri/package.json is missing a version');
 }
 
 const replaceVersion = (source, pattern, label) => {
@@ -23,7 +23,7 @@ const cargoToml = readFileSync(cargoTomlPath, 'utf8');
 const nextCargoToml = replaceVersion(
 	cargoToml,
 	/(?<=^version = ")([^"]+)(?="$)/m,
-	'tauri-plugin/Cargo.toml version',
+	'packages/tauri-plugin/Cargo.toml version',
 );
 
 const cargoLock = readFileSync(cargoLockPath, 'utf8');

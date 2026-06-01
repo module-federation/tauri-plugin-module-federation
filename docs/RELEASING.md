@@ -1,5 +1,6 @@
 ---
 title: Releasing
+summary: Release checklist for publishing npm and Cargo artifacts.
 read_when:
   - preparing a release
   - updating release automation
@@ -14,7 +15,7 @@ This repo publishes:
 
 ## Release flow
 
-1. Bump `module-federation-plugin/package.json` to the release version.
+1. Bump `packages/tauri/package.json` to the release version.
 2. Run `pnpm release:sync` to sync the Cargo crate version.
 3. Commit the version change.
 4. Cut a GitHub Release from that version commit.
@@ -35,7 +36,7 @@ Use plain semver tags.
 
 ## Notes
 
-- `release.yml` syncs the Cargo crate version from `module-federation-plugin/package.json` before publish.
+- `release.yml` syncs the Cargo crate version from `packages/tauri/package.json` before publish.
 - `pnpm build` verifies both publish artifacts before release: `rslib build` for npm and `cargo package` for crates.io.
 - `workflow_dispatch` with `version=next` creates a snapshot-style prerelease version for npm and crates.io.
 - Changesets remain available for local versioning if you want to use `changeset version` before cutting a release.

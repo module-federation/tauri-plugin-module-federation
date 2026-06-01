@@ -18,7 +18,7 @@ Each app uses a different version of lodash to demonstrate Module Federation's m
 pnpm dev
 ```
 
-This starts the guest dev servers, waits for them to be ready, then launches the host Tauri app.
+Turbo starts the guest dev servers with the host task. The host waits for the guest remotes to be ready before launching Tauri.
 
 ## Production
 

@@ -7,7 +7,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/module-federation/tauri-plugin-module-federation.git",
-		"directory": "module-federation-plugin"
+		"directory": "packages/tauri"
 	},
 	"bugs": {
 		"url": "https://github.com/module-federation/tauri-plugin-module-federation/issues"
