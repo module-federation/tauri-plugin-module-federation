@@ -57,7 +57,11 @@ fn authority_from_host_port(host: &str, port: Option<u16>) -> String {
 }
 
 fn windows_remote_path(uri: &Uri) -> Option<(String, Option<u16>, String)> {
-    if uri.host() != Some("module-federation.localhost") {
+    let host = uri.host()?;
+
+    let is_mf_host = host == "module-federation.localhost";
+    let is_webview2 = uri.scheme_str() == Some("module-federation") && host == "localhost";
+    if !is_mf_host && !is_webview2 {
         return None;
     }
 
@@ -89,7 +93,6 @@ fn resolve_remote_url(uri: &Uri, schemes: &Schemes) -> Url {
             query_pairs.get("fullUrl").map(|v| {
                 let url = Url::parse(v).unwrap();
                 let mut schemes = schemes.0.lock().unwrap();
-
                 schemes
                     .entry(remote_key(&url))
                     .or_insert(url.scheme().to_string());
@@ -107,15 +110,19 @@ fn resolve_remote_url(uri: &Uri, schemes: &Schemes) -> Url {
                         .unwrap_or_else(|| "/".to_string()),
                 )
             });
-
             let schemes = schemes.0.lock().unwrap();
-            let scheme = schemes.get(&(host.clone(), port)).unwrap_or_else(|| {
-                dbg!(&schemes);
-                panic!("Unknown scheme for host '{host}:{port:?}'")
-            });
-
+            let scheme = schemes
+                .get(&(host.clone(), port))
+                .map(String::as_str)
+                .unwrap_or_else(|| {
+                    if uri.scheme_str() == Some("module-federation") {
+                        "http"
+                    } else {
+                        "https"
+                    }
+                });
             let builder = uri::Builder::new()
-                .scheme(scheme.as_str())
+                .scheme(scheme)
                 .authority(authority_from_host_port(&host, port))
                 .path_and_query(path_and_query);
 
@@ -140,11 +147,9 @@ pub fn init<R: Runtime>(arg: Option<&'static str>) -> TauriPlugin<R> {
                 std::fs::create_dir_all(&cache_dir).unwrap();
 
                 let app = app.app_handle().clone();
-                app.manage(Schemes::default());
 
                 tauri::async_runtime::spawn(async move {
                     let schemes = app.state::<Schemes>();
-
                     let client = reqwest::Client::new();
                     let url = request.uri().clone();
                     let url = resolve_remote_url(&url, schemes.inner());
@@ -231,6 +236,7 @@ pub fn init<R: Runtime>(arg: Option<&'static str>) -> TauriPlugin<R> {
             #[cfg(desktop)]
             let tauri_plugin_module_federation = desktop::init(app, api)?;
             app.manage(tauri_plugin_module_federation);
+            app.manage(Schemes::default());
 
             Ok(())
         })
