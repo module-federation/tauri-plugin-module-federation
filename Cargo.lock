@@ -72,6 +72,7 @@ checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "example-tauri-e2e",
  "serde",
  "serde_json",
  "tauri",
@@ -825,6 +826,13 @@ checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "example-tauri-e2e"
+version = "0.0.0"
+dependencies = [
+ "tauri",
 ]
 
 [[package]]
@@ -3451,6 +3459,7 @@ version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
  "form_urlencoded",
+ "log",
  "reqwest 0.12.5",
  "serde",
  "sha",
@@ -4061,6 +4070,18 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "vite-host-app"
+version = "0.1.0"
+dependencies = [
+ "example-tauri-e2e",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-module-federation",
+]
 
 [[package]]
 name = "vswhom"

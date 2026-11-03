@@ -1,12 +1,9 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::time::Duration;
 
-use sha::utils::{Digest, DigestExt};
 use tauri::{
-    http::uri,
-    plugin::{Builder, TauriPlugin},
+    plugin::{Builder as PluginBuilder, TauriPlugin},
     Manager, Runtime,
 };
-use url::Url;
 
 pub use models::*;
 
@@ -15,8 +12,10 @@ mod desktop;
 #[cfg(mobile)]
 mod mobile;
 
+mod cache;
 mod error;
 mod models;
+mod protocol;
 
 pub use error::{Error, Result};
 
@@ -24,6 +23,8 @@ pub use error::{Error, Result};
 use desktop::TauriPluginModuleFederation;
 #[cfg(mobile)]
 use mobile::TauriPluginModuleFederation;
+
+use protocol::Protocol;
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the tauri-plugin-module-federation APIs.
 pub trait TauriPluginModuleFederationExt<R: Runtime> {
@@ -36,154 +37,149 @@ impl<R: Runtime, T: Manager<R>> crate::TauriPluginModuleFederationExt<R> for T {
     }
 }
 
-#[derive(Default)]
-struct Schemes(pub Mutex<HashMap<(String, Option<u16>), String>>);
+/// The custom protocol that `@module-federation/tauri` rewrites remote entries to.
+const SCHEME: &str = "mf";
 
-/// Initializes the plugin.
-pub fn init<R: Runtime>(arg: Option<&'static str>) -> TauriPlugin<R> {
-    let builder = Builder::new("tauri-plugin-module-federation")
-        .register_asynchronous_uri_scheme_protocol(
-            "module-federation",
-            move |app, request, responder| {
-                let subfolder = arg.unwrap_or("module-federation");
-                let cache_dir = app
-                    .app_handle()
-                    .path()
-                    .app_cache_dir()
-                    .expect("No cache dir!")
-                    .join(subfolder);
+/// Configures the plugin.
+///
+/// ```no_run
+/// use std::time::Duration;
+///
+/// let app = tauri::Builder::<tauri::Wry>::default().plugin(
+///     tauri_plugin_module_federation::Builder::new()
+///         .cache_folder("remotes")
+///         .connect_timeout(Duration::from_secs(5))
+///         .build(),
+/// );
+/// ```
+#[derive(Debug, Clone)]
+pub struct Builder {
+    cache_folder: String,
+    connect_timeout: Duration,
+    read_timeout: Duration,
+    rollback: bool,
+}
 
-                std::fs::create_dir_all(&cache_dir).unwrap();
+impl Default for Builder {
+    fn default() -> Self {
+        Self {
+            cache_folder: "module-federation".into(),
+            connect_timeout: Duration::from_secs(10),
+            read_timeout: Duration::from_secs(10),
+            rollback: !cfg!(debug_assertions),
+        }
+    }
+}
 
-                let app = app.app_handle().clone();
-                app.manage(Schemes::default());
+impl Builder {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
+    /// Folder inside the app cache dir that holds cached remotes. Defaults to `module-federation`.
+    pub fn cache_folder(mut self, folder: impl Into<String>) -> Self {
+        self.cache_folder = folder.into();
+        self
+    }
+
+    /// How long to wait for a connection to a remote before serving it from the cache.
+    /// Defaults to 10 seconds.
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = timeout;
+        self
+    }
+
+    /// How long a remote may stay silent while sending a response before it is served from
+    /// the cache. This is an inactivity timeout, so large downloads on slow networks are
+    /// not cut off. Defaults to 10 seconds.
+    pub fn read_timeout(mut self, timeout: Duration) -> Self {
+        self.read_timeout = timeout;
+        self
+    }
+
+    /// Whether a new version of a remote entry that fails to load is rolled back to the
+    /// last version that loaded successfully, in this launch and the following ones.
+    ///
+    /// Defaults to `true` in release builds and `false` in debug builds, so that during
+    /// development a broken remote shows its error instead of an older version.
+    /// Serving cached copies when the network fails is always enabled.
+    pub fn rollback(mut self, enabled: bool) -> Self {
+        self.rollback = enabled;
+        self
+    }
+
+    pub fn build<R: Runtime>(self) -> TauriPlugin<R> {
+        let builder = PluginBuilder::new("tauri-plugin-module-federation")
+            .register_asynchronous_uri_scheme_protocol(SCHEME, |ctx, request, responder| {
+                let app = ctx.app_handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    let schemes = app.state::<Schemes>();
-
-                    let client = reqwest::Client::new();
-                    let url = request.uri().clone();
-
-                    let url: Url = url
-                        .query()
-                        .and_then(|query| {
-                            let query_pairs: HashMap<_, _> =
-                                form_urlencoded::parse(query.as_bytes())
-                                    .into_iter()
-                                    .collect();
-
-                            query_pairs.get("fullUrl").map(|v| {
-                                let url = Url::parse(v).unwrap();
-
-                                let mut schemes = schemes.0.lock().unwrap();
-
-                                let key = (url.host().unwrap().to_string(), url.port());
-
-                                schemes.entry(key).or_insert(url.scheme().to_string());
-
-                                url
-                            })
-                        })
-                        .unwrap_or_else(|| {
-                            let url = url.clone();
-
-                            let host = url.host().unwrap().to_string();
-                            let schemes = schemes.0.lock().unwrap();
-                            let scheme = schemes
-                                .get(&(host.clone(), url.port().map(|p| p.as_u16())))
-                                .unwrap_or_else(|| {
-                                    dbg!(&schemes);
-                                    panic!("Unknown scheme for host '{host}:{:?}'", url.port())
-                                });
-
-                            let builder = uri::Builder::from(url).scheme(scheme.as_str());
-                            Url::parse(&builder.build().unwrap().to_string()).unwrap()
-                        });
-
-                    let request_builder = client.request(request.method().clone(), url.clone());
-
-                    let req = request_builder.build().unwrap();
-                    let fetch_resp = client.execute(req).await;
-
-                    let host = {
-                        let scheme = url.scheme();
-                        let host = url.host_str().unwrap();
-                        let mut full_host = format!("{scheme}://{host}");
-
-                        if let Some(port) = url.port() {
-                            full_host.push_str(&format!(":{port}"));
-                        }
-
-                        full_host
+                    let response = match app.try_state::<Protocol>() {
+                        Some(protocol) => protocol.handle(request).await,
+                        None => protocol::text(
+                            tauri::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            "tauri-plugin-module-federation is not initialized",
+                        ),
                     };
-
-                    let host_sha = sha::sha1::Sha1::default().digest(host.as_bytes()).to_hex();
-
-                    let sha_path = cache_dir.join(host_sha);
-                    let cache_path = sha_path.join(
-                        sha::sha1::Sha1::default()
-                            .digest(url.path().as_bytes())
-                            .to_hex(),
-                    );
-
-                    let mut builder = tauri::http::Response::builder();
-
-                    match fetch_resp {
-                        Ok(mut fetch_resp) => {
-                            if let Some(h) = builder.headers_mut() {
-                                *h = std::mem::take(fetch_resp.headers_mut());
-                            }
-
-                            let bytes: Vec<u8> = fetch_resp.bytes().await.unwrap().into();
-
-                            std::fs::create_dir_all(&sha_path).unwrap();
-
-                            std::fs::write(cache_path, &bytes).ok();
-
-                            responder.respond(builder.body(bytes).unwrap());
-                        }
-                        Err(_) => match std::fs::read(cache_path) {
-                            Ok(bytes) => {
-                                responder.respond(builder.body(bytes).unwrap());
-                            }
-                            Err(_) => {
-                                unimplemented!()
-                            }
-                        },
-                    }
+                    responder.respond(response);
                 });
-            },
-        );
+            });
 
-    #[cfg(debug_assertions)]
-    let builder =
-        builder.js_init_script(
-            r#"""
-            setTimeout(() => {
-            	const federation = window.__FEDERATION__;
+        #[cfg(debug_assertions)]
+        let builder =
+            builder.js_init_script(
+                r#"""
+                setTimeout(() => {
+                	const federation = window.__FEDERATION__;
 
-             	if(federation) {
-              	const plugins = federation.__INSTANCES__[0]?.hooks.registerPlugins ?? {};
+                 	if(federation) {
+                  	const plugins = federation.__INSTANCES__[0]?.hooks.registerPlugins ?? {};
 
-                if(!("tauri-module-federation-host" in plugins))
-                	console.warn("[tauri-plugin-module-federation] @module-federation/tauri not found. Have you added it to your Module Federation configuration?")
+                    if(!("tauri-module-federation-host" in plugins))
+                    	console.warn("[tauri-plugin-module-federation] @module-federation/tauri not found. Have you added it to your Module Federation configuration?")
 
-              } else console.warn("[tauri-plugin-module-federation] Module Federation Runtime not found")
+                  } else console.warn("[tauri-plugin-module-federation] Module Federation Runtime not found")
 
-            }, 100);
-           	"""#
-            .to_string(),
-        );
+                }, 100);
+               	"""#
+                .to_string(),
+            );
 
-    builder
-        .setup(|app, api| {
-            #[cfg(mobile)]
-            let tauri_plugin_module_federation = mobile::init(app, api)?;
-            #[cfg(desktop)]
-            let tauri_plugin_module_federation = desktop::init(app, api)?;
-            app.manage(tauri_plugin_module_federation);
+        builder
+            .setup(move |app, api| {
+                let cache_dir = app.path().app_cache_dir()?.join(&self.cache_folder);
+                if let Err(error) = std::fs::create_dir_all(&cache_dir) {
+                    log::warn!("failed to create {}: {error}", cache_dir.display());
+                }
+                let client = reqwest::Client::builder()
+                    .connect_timeout(self.connect_timeout)
+                    .read_timeout(self.read_timeout)
+                    .build()?;
+                app.manage(Protocol::new(
+                    client,
+                    cache::Cache::new(cache_dir),
+                    self.rollback,
+                ));
 
-            Ok(())
-        })
-        .build()
+                #[cfg(mobile)]
+                let tauri_plugin_module_federation = mobile::init(app, api)?;
+                #[cfg(desktop)]
+                let tauri_plugin_module_federation = desktop::init(app, api)?;
+                app.manage(tauri_plugin_module_federation);
+
+                Ok(())
+            })
+            .build()
+    }
+}
+
+/// Initializes the plugin with default settings.
+///
+/// `cache_folder` is the folder inside the app cache dir that holds cached remotes
+/// (`module-federation` when `None`). Use [`Builder`] to configure timeouts.
+pub fn init<R: Runtime>(cache_folder: Option<&'static str>) -> TauriPlugin<R> {
+    match cache_folder {
+        Some(folder) => Builder::new().cache_folder(folder),
+        None => Builder::new(),
+    }
+    .build()
 }

@@ -14,6 +14,11 @@
 			"persistent": true,
 			"with": ["example_guest#dev", "example-guest_2#dev"]
 		},
+		"example-vite-host#dev": {
+			"cache": false,
+			"persistent": true,
+			"with": ["example_vite_guest#dev", "example_guest#dev", "example-guest_2#dev"]
+		},
 		"clean": {
 			"cache": false
 		}
