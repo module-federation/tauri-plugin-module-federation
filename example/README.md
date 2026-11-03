@@ -32,6 +32,8 @@ The Vite host's dev server starts with `--force`. `@module-federation/vite` pre-
 
 `vite-guest` is built with `base: './'` so its chunks are cached for offline use, and `vite preview` sends CORS headers (`preview.cors: true`) so a release build (origin `tauri://localhost`) can load it.
 
+More on Vite remotes: [docs/vite.md](../docs/vite.md).
+
 ## Production
 
 ```sh
