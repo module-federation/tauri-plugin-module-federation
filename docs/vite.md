@@ -62,7 +62,7 @@ const ViteGuestButton = React.lazy(() => loadRemote('example_vite_guest/Button')
 
 `@module-federation/runtime` must resolve to the same copy the bundler runtime uses, so that `registerRemotes` and `loadRemote` act on the host's instance. Add it as a dependency with the same version as your Module Federation build plugin. With pnpm, check that both resolve to the same path in `node_modules/.pnpm`. `example/host/src/App.js` is a working example.
 
-Keep the Vite remote out of the host's build config. If a config remote is marked as an ES module, for example by a runtime plugin that sets `type: 'module'` in `beforeInit`, the Vite remote's `init` fails with `RUNTIME-015` (`Cannot read properties of undefined (reading 'S')`) and the whole host page fails to render. This happens in a plain browser as well, without Tauri. It was seen with `@module-federation/vite` 1.23.8 and Module Federation 2.9.3.
+Keep the Vite remote out of the host's build config. If a config remote is marked as an ES module, for example by a runtime plugin that sets `type: 'module'` in `beforeInit`, the Vite remote's `init` can fail with `RUNTIME-015` (`Cannot read properties of undefined (reading 'S')`) and the whole host page fails to render. It happens when the Vite remote consumes an Rsbuild or webpack remote of its own and also uses `react-dom/client` itself, as `example/vite-guest` does. It happens in a plain browser as well, without Tauri, with `@module-federation/vite` 1.23.8 and 1.23.9. Reported upstream as [module-federation/vite#1541](https://github.com/module-federation/vite/issues/1541).
 
 ## Requirements for Vite remotes
 
