@@ -103,6 +103,9 @@ importers:
 
   example/host:
     dependencies:
+      '@module-federation/runtime':
+        specifier: ^2.9.3
+        version: 2.9.3
       '@module-federation/tauri':
         specifier: workspace:*
         version: link:../../packages/tauri

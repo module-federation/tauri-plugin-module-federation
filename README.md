@@ -64,11 +64,13 @@ export default {
 
 Vite remotes must send CORS headers that allow the Tauri origin, and should be built with `base: './'` so their chunks are cached. See [docs/vite.md](./docs/vite.md).
 
+Hosts and remotes from different bundlers can be mixed: both example hosts consume an Rsbuild remote and a Vite remote. Rsbuild and webpack hosts register ES module remotes at runtime instead of in their config. See [Rsbuild or webpack host with a Vite remote](./docs/vite.md#rsbuild-or-webpack-host-with-a-vite-remote).
+
 ## Example apps
 
 | App | Bundler | Port | Role |
 |---|---|---|---|
-| `example/host` | Rsbuild | 3001 | Tauri host, consumes `guest` |
+| `example/host` | Rsbuild | 3001 | Tauri host, consumes `guest` and `vite-guest` |
 | `example/guest` | Rsbuild | 3002 | Remote, consumes `guest-2` |
 | `example/guest-2` | Rsbuild | 3003 | Remote |
 | `example/vite-guest` | Vite | 3004 | ES module remote, consumes `guest-2` |

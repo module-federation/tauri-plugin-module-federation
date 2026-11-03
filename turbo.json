@@ -12,7 +12,7 @@
 		"example-host#dev": {
 			"cache": false,
 			"persistent": true,
-			"with": ["example_guest#dev", "example-guest_2#dev"]
+			"with": ["example_guest#dev", "example-guest_2#dev", "example_vite_guest#dev"]
 		},
 		"example-vite-host#dev": {
 			"cache": false,

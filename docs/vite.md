@@ -30,7 +30,37 @@ export default {
 };
 ```
 
-Hosts and remotes from different bundlers can be mixed. A Vite host can consume Rsbuild or webpack remotes (`type: 'var'`), and Vite remotes can consume Rsbuild remotes. The example apps do both.
+Hosts and remotes from different bundlers can be mixed. Both example hosts consume an Rsbuild remote and a Vite remote:
+
+| Host | Rsbuild remote | Vite remote |
+|---|---|---|
+| `example/host` (Rsbuild) | in `rsbuild.config.ts` | registered at runtime, see below |
+| `example/vite-host` (Vite) | `type: 'var'` in `vite.config.ts` | `type: 'module'` in `vite.config.ts` |
+
+Vite remotes can consume Rsbuild remotes too: `example/vite-guest` consumes `guest-2`.
+
+## Rsbuild or webpack host with a Vite remote
+
+Rsbuild and webpack hosts load the remotes declared in their config as classic `script` remotes. Only those go through the Module Federation runtime. A remote declared with another type, such as `module`, is loaded by the bundler's externals and skips `@module-federation/tauri`, so it is neither routed through `mf://` nor cached.
+
+Register ES module remotes on the host's runtime instead:
+
+```js
+import React from 'react';
+import { loadRemote, registerRemotes } from '@module-federation/runtime';
+
+registerRemotes([
+	{
+		name: 'example_vite_guest',
+		type: 'module',
+		entry: 'http://localhost:3004/remoteEntry.js',
+	},
+]);
+
+const ViteGuestButton = React.lazy(() => loadRemote('example_vite_guest/Button'));
+```
+
+`@module-federation/runtime` must resolve to the same copy the bundler runtime uses, so that `registerRemotes` and `loadRemote` act on the host's instance. Add it as a dependency with the same version as your Module Federation build plugin. With pnpm, check that both resolve to the same path in `node_modules/.pnpm`. `example/host/src/App.js` is a working example.
 
 ## Requirements for Vite remotes
 

@@ -6,7 +6,7 @@ Demonstrates chained Module Federation in a Tauri app with offline caching.
 
 | App | Bundler | Port | Role |
 |---|---|---|---|
-| `host` | Rsbuild | 3001 | Tauri + React app, consumes `guest` |
+| `host` | Rsbuild | 3001 | Tauri + React app, consumes `guest` and `vite-guest` |
 | `guest` | Rsbuild | 3002 | Standalone React app, exposes Button, consumes `guest-2` |
 | `guest-2` | Rsbuild | 3003 | Standalone React app, exposes Button |
 | `vite-guest` | Vite | 3004 | ES module remote, exposes Button, consumes `guest-2` |

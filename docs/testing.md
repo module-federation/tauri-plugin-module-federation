@@ -60,8 +60,8 @@ Then run the smoke test against each host:
 ```bash
 pnpm e2e:smoke --app target/release/app \
   --cache "~/Library/Caches/dev.module-federation.host/module-federation" \
-  --remote example/guest/dist:3002 --remote example/guest-2/dist:3003 \
-  --expect "Host Button" --expect "Guest Button" --expect "Guest 2 Button"
+  --remote example/guest/dist:3002 --remote example/guest-2/dist:3003 --remote example/vite-guest/dist:3004 \
+  --expect "Host Button" --expect "Guest Button" --expect "Guest 2 Button" --expect "Vite Guest Button"
 
 pnpm e2e:smoke --app target/release/vite-host-app \
   --cache "~/Library/Caches/dev.module-federation.vite-host/module-federation" \
