@@ -59,7 +59,7 @@ Then run the smoke test against each host:
 
 ```bash
 pnpm e2e:smoke --app target/release/app \
-  --cache "~/Library/Caches/dev.crabnebula.module-federation/module-federation" \
+  --cache "~/Library/Caches/dev.module-federation.host/module-federation" \
   --remote example/guest/dist:3002 --remote example/guest-2/dist:3003 \
   --expect "Host Button" --expect "Guest Button" --expect "Guest 2 Button"
 
