@@ -22,6 +22,8 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 - `feat!:` or a `BREAKING CHANGE:` footer releases a minor while the version is below 1.0 (`bump-minor-pre-major`), then a major.
 - `chore:`, `docs:`, `test:`, `ci:`, `refactor:`, and `build:` release nothing and stay out of the changelog.
 
+Both artifacts share one version, so a change to either package releases both. release-please tracks the repo root and ignores commits that only touch `.github`, `docs`, `example` or `scripts`: a `fix:` to the Rust crate releases, a `feat:` to an example app does not.
+
 `CI` runs this gate on every PR and on `main`. Run it locally before merging:
 
 ```bash
@@ -46,7 +48,7 @@ On every push to `main`, the `Release Please` workflow opens or updates a `chore
 - `.release-please-manifest.json`
 - `packages/tauri/CHANGELOG.md`
 
-`release-please-config.json` lists the Cargo files under `extra-files`, so the crate version always matches the npm version. Edit the PR's changelog entry before merging if the commit titles need context. To force a version, add a `Release-As: x.y.z` footer to a commit on `main`.
+`release-please-config.json` lists `packages/tauri/package.json` and the Cargo files under `extra-files`, so the crate version always matches the npm version. Edit the PR's changelog entry before merging if the commit titles need context. To force a version, add a `Release-As: x.y.z` footer to a commit on `main`.
 
 Merging the release PR makes release-please tag the merge commit and publish a GitHub Release named after the version, without a `v` (`0.1.0`, not `v0.1.0`). That release triggers `Release`, which publishes both artifacts. npm gets the `latest` dist-tag.
 
