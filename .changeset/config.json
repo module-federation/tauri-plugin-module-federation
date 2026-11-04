@@ -11,8 +11,6 @@
     "example",
     "example-host",
     "example_guest",
-    "example-guest_2",
-    "example-vite-host",
-    "example_vite_guest"
+    "example-guest_2"
   ]
 }
