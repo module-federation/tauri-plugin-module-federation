@@ -36,7 +36,8 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "rslib build"
+		"build": "rslib build",
+		"pack:dry": "npm pack --dry-run"
 	},
 	"peerDependencies": {
 		"@module-federation/runtime": "^2.0.0"

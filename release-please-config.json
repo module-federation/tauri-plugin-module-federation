@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "node",
+  "include-component-in-tag": false,
+  "include-v-in-tag": false,
+  "bump-minor-pre-major": true,
+  "changelog-type": "github",
+  "pull-request-title-pattern": "chore: release ${version}",
+  "packages": {
+    "packages/tauri": {
+      "package-name": "@module-federation/tauri",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "/packages/tauri-plugin/Cargo.toml",
+          "jsonpath": "$.package.version"
+        },
+        {
+          "type": "toml",
+          "path": "/Cargo.lock",
+          "jsonpath": "$.package[?(@.name.value==='tauri-plugin-module-federation')].version"
+        }
+      ]
+    }
+  }
+}

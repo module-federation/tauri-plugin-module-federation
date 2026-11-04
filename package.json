@@ -6,16 +6,14 @@
 		"dev": "turbo run dev --filter=example-host",
 		"dev:vite": "turbo run dev --filter=example-vite-host",
 		"build": "turbo run build --filter='./packages/*' --filter='./example/*' && pnpm build:package:cargo",
-		"build:package": "pnpm build",
+		"build:package": "pnpm --filter @module-federation/tauri build",
+		"pack:tauri": "pnpm --filter @module-federation/tauri pack:dry",
 		"build:package:cargo": "cargo package --manifest-path packages/tauri-plugin/Cargo.toml --allow-dirty --no-verify",
-		"changeset": "changeset",
-		"changeset:status": "changeset status",
 		"release:sync": "node scripts/sync-release-version.mjs",
 		"release:sync:check": "node scripts/sync-release-version.mjs --check",
 		"e2e:smoke": "node scripts/e2e-smoke.mjs"
 	},
 	"devDependencies": {
-		"@changesets/cli": "^2.29.7",
 		"turbo": "^2.9.16"
 	}
 }
