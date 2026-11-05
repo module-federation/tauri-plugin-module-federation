@@ -2,19 +2,15 @@ name: Release
 
 on:
   release:
-    types: [released, prereleased]
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
         type: choice
-        description: Release Version
         required: true
         default: next
-        options:
-          - latest
-          - next
+        options: [latest, next]
       branch:
-        description: Release Branch (confirm release branch)
         required: true
         default: main
 
@@ -23,7 +19,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: publish-${{ github.workflow }}-${{ github.ref_name || github.run_id }}
+  group: publish-module-federation-tauri
   cancel-in-progress: false
 
 jobs:
@@ -31,209 +27,95 @@ jobs:
     runs-on: ubuntu-latest
     environment: Publish
     env:
-      PACKAGE_DIR: packages/tauri
-      PACKAGE_NAME: '@module-federation/tauri'
-      CARGO_MANIFEST: packages/tauri-plugin/Cargo.toml
+      NPM_PACKAGE: "@module-federation/tauri"
       CARGO_PACKAGE: tauri-plugin-module-federation
+      CARGO_MANIFEST: packages/tauri-plugin/Cargo.toml
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v5
+      - name: Validate manual target
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_BRANCH: ${{ inputs.branch }}
+        run: test "$RELEASE_BRANCH" = "main" || { echo "Releases are main-only."; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 25
-          ref: ${{ github.event.release.tag_name || github.event.inputs.branch }}
-
-      - name: Cache tool downloads
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache
-          key: ${{ runner.os }}-toolcache-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-toolcache-
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.2
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+          fetch-depth: 0
+          ref: ${{ github.event.release.tag_name || inputs.branch }}
+      - name: Verify source branch
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main || { echo "Source is not on main."; exit 1; }
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org/
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - run: corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate preview version
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version == 'next'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri system dependencies
         run: |
-          SAFE_BRANCH=$(echo "${{ github.event.inputs.branch }}" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
-          npx changeset version --snapshot "$SAFE_BRANCH"
-
-      - name: Verify tag matches package version
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release tag
         if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          if [ "${TAG#v}" != "$TAG" ]; then
-            echo "Invalid tag format; refusing to publish."
-            echo "Expected: 1.2.3 (no leading 'v')"
-            echo "Got: $TAG"
-            exit 1
-          fi
-
-          VERSION_FROM_TAG="$TAG"
-          PKG_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
-
-          if [ "$PKG_VERSION" != "$VERSION_FROM_TAG" ]; then
-            echo "Version mismatch; refusing to publish."
-            echo "Git tag: $TAG"
-            echo "packages/tauri/package.json version: $PKG_VERSION"
-            exit 1
-          fi
-
-      - name: Patch prerelease version with next tag
-        if: github.event_name == 'release' && github.event.action == 'prereleased'
-        shell: bash
+          test "${RELEASE_TAG#v}" = "$RELEASE_TAG" || { echo "Tags must not start with v."; exit 1; }
+          test "$(node -p "require('./packages/tauri/package.json').version")" = "$RELEASE_TAG" || { echo "Tag/version mismatch."; exit 1; }
+          pnpm release:sync:check || { echo "Cargo version does not match packages/tauri/package.json."; exit 1; }
+      - name: Generate preview version
+        if: github.event_name == 'workflow_dispatch' && inputs.version == 'next'
         run: |
-          CURRENT_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
-          BASE_VERSION="${CURRENT_VERSION%%-*}"
-          CURRENT_NEXT="$(npm view "$PACKAGE_NAME" "dist-tags.next" --json 2>/dev/null || true)"
-          CURRENT_NEXT="${CURRENT_NEXT#\"}"
-          CURRENT_NEXT="${CURRENT_NEXT%\"}"
-          if [ "$CURRENT_NEXT" = "null" ]; then
-            CURRENT_NEXT=""
-          fi
-
-          PREFIX_REGEX="^${BASE_VERSION//./\\.}-next\\.([0-9]+)$"
-          if [[ "$CURRENT_NEXT" =~ $PREFIX_REGEX ]]; then
-            NEXT_NUMBER=$((BASH_REMATCH[1] + 1))
-          else
-            NEXT_NUMBER=1
-          fi
-
-          NEXT_VERSION="${BASE_VERSION}-next.${NEXT_NUMBER}"
-          node --eval '
-            const fs = require("node:fs");
-            const path = "./packages/tauri/package.json";
-            const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
-            pkg.version = process.argv[1];
-            fs.writeFileSync(path, JSON.stringify(pkg, null, "\t") + "\n");
-          ' "$NEXT_VERSION"
-          echo "Set prerelease version: $NEXT_VERSION"
-
-      - name: Sync Cargo release version
-        run: pnpm release:sync
-
+          BASE_VERSION="$(node -p "require('./packages/tauri/package.json').version.split('-')[0]")"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+          npm pkg set version="${MAJOR}.${MINOR}.$((PATCH + 1))-next.${GITHUB_RUN_ID}" --prefix packages/tauri
+          pnpm release:sync
       - name: Verify release artifacts
-        run: pnpm build
-
-      - name: Compute npm dist-tag
+        run: |
+          pnpm build
+          pnpm pack:tauri
+      - name: Compute dist-tag
         id: dist
-        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ github.event.release.prerelease || false }}
         run: |
-          DIST_TAG="latest"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ "${{ github.event.inputs.version }}" = "next" ]; then
-              DIST_TAG="next"
-            fi
-          else
-            if [ "${{ github.event.action }}" = "prereleased" ]; then
-              DIST_TAG="next"
-            fi
-          fi
-
-          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve npm publish action
-        id: npm_publish_action
-        shell: bash
-        run: |
-          PKG_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
-          DIST_TAG="${{ steps.dist.outputs.dist_tag }}"
-          ACTION="publish"
-          REASON="new version not yet on npm"
-
-          EXISTING_VERSION="$(npm view "$PACKAGE_NAME@$PKG_VERSION" version --json 2>/dev/null || true)"
-          EXISTING_VERSION="${EXISTING_VERSION#\"}"
-          EXISTING_VERSION="${EXISTING_VERSION%\"}"
-
-          if [ "$EXISTING_VERSION" = "$PKG_VERSION" ]; then
-            CURRENT_TAG_VERSION="$(npm view "$PACKAGE_NAME" "dist-tags.$DIST_TAG" --json 2>/dev/null || true)"
-            CURRENT_TAG_VERSION="${CURRENT_TAG_VERSION#\"}"
-            CURRENT_TAG_VERSION="${CURRENT_TAG_VERSION%\"}"
-            if [ "$CURRENT_TAG_VERSION" = "null" ]; then
-              CURRENT_TAG_VERSION=""
-            fi
-
-            if [ "$CURRENT_TAG_VERSION" = "$PKG_VERSION" ]; then
-              ACTION="skip"
-              REASON="version already published and dist-tag already points to it"
-            else
-              echo "Refusing to republish existing npm version:"
-              echo "Package: $PACKAGE_NAME"
-              echo "Version: $PKG_VERSION"
-              echo "Target dist-tag: $DIST_TAG"
-              echo "Current '$DIST_TAG' dist-tag points to: ${CURRENT_TAG_VERSION:-<unset>}"
-              exit 1
-            fi
-          fi
-
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve Cargo publish action
-        id: cargo_publish_action
-        shell: bash
-        run: |
-          CARGO_VERSION="$(node -p "require('./packages/tauri/package.json').version")"
-          STATUS_CODE="$(curl -s -o /tmp/crate.json -w '%{http_code}' "https://crates.io/api/v1/crates/$CARGO_PACKAGE/$CARGO_VERSION")"
-          ACTION="publish"
-          REASON="new version not yet on crates.io"
-
-          if [ "$STATUS_CODE" = "200" ]; then
-            ACTION="skip"
-            REASON="version already published on crates.io"
-          elif [ "$STATUS_CODE" != "404" ]; then
-            echo "Unexpected crates.io response: $STATUS_CODE"
-            cat /tmp/crate.json
-            exit 1
-          fi
-
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
-
-      - name: Publish to npm
-        if: steps.npm_publish_action.outputs.action == 'publish'
-        working-directory: packages/tauri
-        run: npm publish --provenance --tag "${{ steps.dist.outputs.dist_tag }}" --access public
-
-      - name: Publish to crates.io
-        if: steps.cargo_publish_action.outputs.action == 'publish'
-        run: cargo publish --manifest-path "$CARGO_MANIFEST" --allow-dirty --no-verify --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"
-
-      - name: Post summary
-        if: always()
-        continue-on-error: true
+          TAG=latest
+          if [ "$INPUT_VERSION" = "next" ] || [ "$PRERELEASE" = "true" ]; then TAG=next; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Refuse conflicting npm republish
+        id: npm-check
+        env:
+          DIST_TAG: ${{ steps.dist.outputs.tag }}
         run: |
           VERSION="$(node -p "require('./packages/tauri/package.json').version")"
-          SOURCE_REF="${{ github.event.release.tag_name || github.event.inputs.branch }}"
-          {
-            echo "## Release publish"
-            echo
-            echo "npm package: \`$PACKAGE_NAME\`"
-            echo "cargo crate: \`$CARGO_PACKAGE\`"
-            echo "version: \`$VERSION\`"
-            echo "dist-tag: \`${{ steps.dist.outputs.dist_tag }}\`"
-            echo "npm action: \`${{ steps.npm_publish_action.outputs.action || 'unknown' }}\`"
-            echo "npm reason: \`${{ steps.npm_publish_action.outputs.reason || 'n/a' }}\`"
-            echo "cargo action: \`${{ steps.cargo_publish_action.outputs.action || 'unknown' }}\`"
-            echo "cargo reason: \`${{ steps.cargo_publish_action.outputs.reason || 'n/a' }}\`"
-            echo "trigger: \`${{ github.event_name }}\`"
-            echo "source ref: \`$SOURCE_REF\`"
-          } > "$GITHUB_STEP_SUMMARY"
+          EXISTING="$(npm view "$NPM_PACKAGE@$VERSION" version --json 2>/dev/null || true)"
+          EXISTING="${EXISTING#\"}"; EXISTING="${EXISTING%\"}"
+          if [ "$EXISTING" = "$VERSION" ]; then
+            CURRENT="$(npm view "$NPM_PACKAGE" "dist-tags.$DIST_TAG" --json 2>/dev/null || true)"
+            CURRENT="${CURRENT#\"}"; CURRENT="${CURRENT%\"}"
+            test "$CURRENT" = "$VERSION" || { echo "Existing version has conflicting dist-tag."; exit 1; }
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check crates.io
+        id: cargo-check
+        run: |
+          VERSION="$(node -p "require('./packages/tauri/package.json').version")"
+          STATUS="$(curl -s -o /tmp/crate.json -w '%{http_code}' -A "github.com/${GITHUB_REPOSITORY}" "https://crates.io/api/v1/crates/$CARGO_PACKAGE/$VERSION")"
+          case "$STATUS" in
+            200) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
+            404) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unexpected crates.io response: $STATUS"; cat /tmp/crate.json; exit 1 ;;
+          esac
+      - name: Publish to npm
+        if: steps.npm-check.outputs.publish == 'true'
+        working-directory: packages/tauri
+        run: npm publish --provenance --tag "${{ steps.dist.outputs.tag }}" --access public
+      - name: Publish to crates.io
+        if: steps.cargo-check.outputs.publish == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path "$CARGO_MANIFEST" --allow-dirty --no-verify
