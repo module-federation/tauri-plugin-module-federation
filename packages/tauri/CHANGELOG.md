@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 (2026-11-05)
+
+## What's Changed
+* fix: publish a README with the tauri-plugin-module-federation crate by @Nsttt in https://github.com/module-federation/tauri/pull/34
+
+
+**Full Changelog**: https://github.com/module-federation/tauri/compare/1.0.0...1.0.1
+
 ## 1.0.0 (2026-11-05)
 
 ## What's Changed

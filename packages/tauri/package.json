@@ -1,6 +1,6 @@
 {
 	"name": "@module-federation/tauri",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"type": "module",
 	"description": "Tauri runtime integration for Module Federation.",
 	"license": "MIT",
