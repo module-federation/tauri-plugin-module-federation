@@ -5,6 +5,7 @@
 	"scripts": {
 		"dev": "wait-on http-get://localhost:3002 http-get://localhost:3003 http-get://localhost:3004 && tauri dev",
 		"build": "tauri build",
+		"build:ci": "tauri build --no-bundle",
 		"serve": "vite preview",
 		"clean": "rm -rf dist"
 	},
