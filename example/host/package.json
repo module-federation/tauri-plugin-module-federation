@@ -3,12 +3,13 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "wait-on http-get://localhost:3002 http-get://localhost:3003 && tauri dev",
+		"dev": "wait-on http-get://localhost:3002 http-get://localhost:3003 http-get://localhost:3004 && tauri dev",
 		"build": "tauri build",
 		"serve": "serve dist -p 3001",
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
+		"@module-federation/runtime": "^2.9.3",
 		"@module-federation/tauri": "workspace:*",
 		"lodash": "4.18.1",
 		"react": "^19.2.5",
@@ -16,9 +17,9 @@
 		"zephyr-rsbuild-plugin": "^1.0.1"
 	},
 	"devDependencies": {
-		"@module-federation/rsbuild-plugin": "^2.5.0",
-		"@rsbuild/core": "^2.0.0",
-		"@rsbuild/plugin-react": "^2.0.0",
+		"@module-federation/rsbuild-plugin": "^2.9.3",
+		"@rsbuild/core": "^2.3.1",
+		"@rsbuild/plugin-react": "^2.1.1",
 		"@tauri-apps/cli": "^2.10.1",
 		"https-proxy-agent": "^7.0.6",
 		"serve": "^14.2.6",

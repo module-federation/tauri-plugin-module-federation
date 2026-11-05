@@ -1,0 +1,21 @@
+{
+	"name": "example_vite_guest",
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"serve": "vite preview",
+		"clean": "rm -rf dist"
+	},
+	"dependencies": {
+		"lodash": "4.17.21",
+		"react": "^19.2.5",
+		"react-dom": "^19.2.5"
+	},
+	"devDependencies": {
+		"@module-federation/vite": "^1.23.9",
+		"@vitejs/plugin-react": "^6.2.1",
+		"vite": "^8.3.5"
+	}
+}

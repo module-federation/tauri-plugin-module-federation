@@ -1,0 +1,9 @@
+[package]
+name = "example-tauri-e2e"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Smoke-test reporter shared by the example Tauri apps. Only active when MF_E2E is set."
+
+[dependencies]
+tauri = "2.10"

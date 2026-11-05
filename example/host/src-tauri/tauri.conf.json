@@ -1,7 +1,7 @@
 {
 	"productName": "example-host",
 	"version": "0.1.0",
-	"identifier": "dev.crabnebula.module-federation",
+	"identifier": "dev.module-federation.host",
 	"build": {
 		"frontendDist": "../dist",
 		"devUrl": "http://localhost:3001",
