@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-module-federation"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Néstor López <nestor@nstlopez.com>"]
 license = "MIT"
 description = "Tauri plugin for Module Federation remote loading and offline cache fallback."
