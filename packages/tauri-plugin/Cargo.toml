@@ -4,6 +4,7 @@ version = "1.0.0"
 authors = ["Néstor López <nestor@nstlopez.com>"]
 license = "MIT"
 description = "Tauri plugin for Module Federation remote loading and offline cache fallback."
+readme = "README.md"
 homepage = "https://github.com/module-federation/tauri-plugin-module-federation"
 repository = "https://github.com/module-federation/tauri-plugin-module-federation"
 edition = "2021"
