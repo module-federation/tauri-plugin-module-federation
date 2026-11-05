@@ -35,6 +35,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:sync:check
       - run: cargo fmt --all --check
-      - run: pnpm build
+      - run: pnpm build:ci
       - run: cargo test -p tauri-plugin-module-federation
       - run: pnpm pack:tauri
