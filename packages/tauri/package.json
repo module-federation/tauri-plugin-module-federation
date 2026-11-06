@@ -6,13 +6,13 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/module-federation/tauri-plugin-module-federation.git",
+		"url": "git+https://github.com/module-federation/tauri.git",
 		"directory": "packages/tauri"
 	},
 	"bugs": {
-		"url": "https://github.com/module-federation/tauri-plugin-module-federation/issues"
+		"url": "https://github.com/module-federation/tauri/issues"
 	},
-	"homepage": "https://github.com/module-federation/tauri-plugin-module-federation#readme",
+	"homepage": "https://github.com/module-federation/tauri#readme",
 	"keywords": [
 		"tauri",
 		"module federation",

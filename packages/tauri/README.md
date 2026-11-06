@@ -43,7 +43,7 @@ federation({
 });
 ```
 
-Vite remotes must send CORS headers that allow the Tauri origin and should be built with `base: './'`. See [docs/vite.md](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/vite.md) for details.
+Vite remotes must send CORS headers that allow the Tauri origin and should be built with `base: './'`. See [docs/vite.md](https://github.com/module-federation/tauri/blob/main/docs/vite.md) for details.
 
 ## Behavior
 
@@ -52,7 +52,7 @@ Vite remotes must send CORS headers that allow the Tauri origin and should be bu
 - `errorLoadRemote`: when a remote fails to load, asks the Tauri plugin to roll back new, unconfirmed entry versions. If any were rolled back, the page reloads with the last versions that worked.
 - Registers the same hooks as a global runtime plugin during `beforeInit`, so nested remotes are covered too.
 
-Fetching, caching, offline fallback and rollback happen in `tauri-plugin-module-federation`. See [docs/offline-and-rollback.md](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/offline-and-rollback.md) and [docs/architecture.md](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/architecture.md).
+Fetching, caching, offline fallback and rollback happen in `tauri-plugin-module-federation`. See [docs/offline-and-rollback.md](https://github.com/module-federation/tauri/blob/main/docs/offline-and-rollback.md) and [docs/architecture.md](https://github.com/module-federation/tauri/blob/main/docs/architecture.md).
 
 ## License
 

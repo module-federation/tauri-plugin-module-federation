@@ -41,7 +41,7 @@ pluginModuleFederation({
 });
 ```
 
-Webpack and `@module-federation/vite` hosts use the same `runtimePlugins` entry. See the [Vite guide](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/vite.md) for Vite remotes.
+Webpack and `@module-federation/vite` hosts use the same `runtimePlugins` entry. See the [Vite guide](https://github.com/module-federation/tauri/blob/main/docs/vite.md) for Vite remotes.
 
 ## Configuration
 
@@ -75,7 +75,7 @@ Rollback is on by default in release builds and off in debug builds.
 | Not reachable and never cached | A `502`/`504` error that the Module Federation runtime reports as a failed remote. |
 | A new release that fails to load | The page reloads with the last version that loaded. That version is kept on later launches. |
 
-The cache layout and known limitations are in [Offline and failed releases](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/offline-and-rollback.md). How requests flow through both packages is in [Architecture](https://github.com/module-federation/tauri-plugin-module-federation/blob/main/docs/architecture.md).
+The cache layout and known limitations are in [Offline and failed releases](https://github.com/module-federation/tauri/blob/main/docs/offline-and-rollback.md). How requests flow through both packages is in [Architecture](https://github.com/module-federation/tauri/blob/main/docs/architecture.md).
 
 ## License
 
