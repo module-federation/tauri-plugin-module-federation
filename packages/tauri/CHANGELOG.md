@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 (2026-11-06)
+
+## What's Changed
+* fix: align package metadata with renamed tauri repository by @2heal1 in https://github.com/module-federation/tauri/pull/36
+
+
+**Full Changelog**: https://github.com/module-federation/tauri/compare/1.0.1...1.0.2
+
 ## 1.0.1 (2026-11-05)
 
 ## What's Changed
