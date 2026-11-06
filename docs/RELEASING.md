@@ -85,7 +85,7 @@ To validate npm OIDC from a PR before merging, dispatch `release.yml` on the PR 
 
 Both publish jobs use GitHub-hosted runners with `contents: read` and `id-token: write`. Neither npm nor crates.io needs a long-lived publishing token in GitHub secrets. The Rust job uses `rust-lang/crates-io-auth-action`, which retrieves a temporary token and revokes it when the job completes.
 
-Both registries must trust repository `module-federation/tauri-plugin-module-federation`, workflow `release.yml`, environment `Publish`. If the repository is renamed, update both trusted publisher configurations and the package repository metadata before publishing again.
+Both registries must trust repository `module-federation/tauri`, workflow `release.yml`, environment `Publish`. If the repository is renamed, update both trusted publisher configurations and the package repository metadata before publishing again.
 
 ## First publish
 
@@ -93,8 +93,8 @@ npm only lets a package that already exists name a trusted publisher, so the wor
 
 1. Build and inspect the current `0.0.0` package with `pnpm build:package` and `pnpm pack:tauri`, then publish it once from `packages/tauri` with `npm publish --access public`. This bootstrap release contains the runtime plugin and declarations.
 2. Add the trusted publisher on npmjs.com (package settings, "Trusted Publisher", GitHub Actions) or with npm 11.10+:
-   `npm trust github @module-federation/tauri --file release.yml --repo module-federation/tauri-plugin-module-federation --env Publish --allow-publish`.
-3. Publish the next version through the workflow before the validation deadline shown in npm package settings. An unvalidated connection expires after two days. The connection created on November 5, 2026 must publish before November 7, 2026 at 11:51 UTC (19:51 China Standard Time).
+   `npm trust github @module-federation/tauri --file release.yml --repo module-federation/tauri --env Publish --allow-publish`.
+3. Publish the next version through the workflow before the validation deadline shown in npm package settings. An unvalidated connection expires after two days. The connection for the renamed repository, created on November 6, 2026, must publish before November 8, 2026 at 03:03 UTC (11:03 China Standard Time).
 
 Trusted publishing needs npm 11.5.1+ on Node 22.14+. The workflow uses Node 24 and explicitly installs npm 11.10+.
 
@@ -105,7 +105,7 @@ The maintainer can use their own crates.io account. Crate names are global; no o
 1. Publish `tauri-plugin-module-federation` once using the maintainer's local Cargo credentials, after `cargo publish --dry-run --manifest-path packages/tauri-plugin/Cargo.toml`.
 2. Add another maintainer or a GitHub team as a crate owner:
    `cargo owner --add github:module-federation:<team-slug> tauri-plugin-module-federation`.
-3. In the crate's crates.io settings, add a GitHub Actions trusted publisher with repository owner `module-federation`, repository `tauri-plugin-module-federation`, workflow filename `release.yml`, and environment `Publish`.
+3. In the crate's crates.io settings, add a GitHub Actions trusted publisher with repository owner `module-federation`, repository `tauri`, workflow filename `release.yml`, and environment `Publish`.
 4. Set repository variable `CARGO_PUBLISH_ENABLED` to `true` only after trusted publishing is configured.
 
 Until then, the npm release works independently and the Cargo publish job is skipped. The crate owner can also publish Rust releases manually. A Cargo job failure does not undo an npm release; rerun the same workflow run to retry the original commit and version.
